@@ -11,7 +11,7 @@ using UnityEngine;
 namespace Oxide.Plugins
 {
     [Info("Silent Building Blocks", "VisEntities", "1.0.0")]
-    [Description(" ")]
+    [Description("Removes the smoke effect when placing building blocks.")]
     public class SilentBuildingBlocks : RustPlugin
     {
         #region Fields
