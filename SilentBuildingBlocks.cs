@@ -6,18 +6,18 @@
 
 using HarmonyLib;
 using Oxide.Core;
+using Oxide.Core.Plugins;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Silent Building Blocks", "VisEntities", "1.0.0")]
+    [Info("Silent Building Blocks", "VisEntities", "1.0.1")]
     [Description("Removes the smoke effect when placing building blocks.")]
     public class SilentBuildingBlocks : RustPlugin
     {
         #region Fields
 
         private static SilentBuildingBlocks _plugin;
-        private Harmony _harmony;
 
         #endregion Fields
 
@@ -26,13 +26,10 @@ namespace Oxide.Plugins
         private void Init()
         {
             _plugin = this;
-            _harmony = new Harmony(Name + "PATCH");
-            _harmony.PatchAll();
         }
 
         private void Unload()
         {
-            _harmony.UnpatchAll(Name + "PATCH");
             _plugin = null;
         }
 
@@ -117,6 +114,7 @@ namespace Oxide.Plugins
 
         #region Harmony Patches
 
+        [AutoPatch]
         [HarmonyPatch(typeof(Planner), "DoPlacement")]
         public static class DoPlacement_Patch
         {
