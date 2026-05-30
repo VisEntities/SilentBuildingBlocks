@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (C) 2024 Game4Freak.io
+ * Copyright (C) 2026 Game4Freak.io
  * This mod is provided under the Game4Freak EULA.
  * Full legal terms can be found at https://game4freak.io/eula/
  */
@@ -7,12 +7,15 @@
 using HarmonyLib;
 using Oxide.Core;
 using Oxide.Core.Plugins;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Silent Building Blocks", "VisEntities", "1.0.1")]
-    [Description("Removes the smoke effect when placing building blocks.")]
+    [Info("Silent Building Blocks", "VisEntities", "1.1.0")]
+    [Description("Removes the visual effect played when placing and upgrading building blocks.")]
     public class SilentBuildingBlocks : RustPlugin
     {
         #region Fields
@@ -106,7 +109,6 @@ namespace Oxide.Plugins
             if (stabilityEntity != null)
                 stabilityEntity.UpdateSurroundingEntities();
 
-            // Return the GameObject of the entity that was created.
             return baseEntity.gameObject;
         }
 
@@ -124,13 +126,63 @@ namespace Oxide.Plugins
 
                 if (hookResult is GameObject)
                 {
-                    // If the hook returned a GameObject, use it as the result and skip the original method.
                     __result = (GameObject)hookResult;
                     return false;
                 }
 
-                // Otherwise let the original method run.
                 return true;
+            }
+        }
+
+        [AutoPatch]
+        [HarmonyPatch(typeof(BuildingBlock), "DoUpgradeToGrade")]
+        public static class DoUpgradeToGrade_Patch
+        {
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+
+                int stringIndex = -1;
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Ldstr && (codes[i].operand as string) == "DoUpgradeEffect")
+                    {
+                        stringIndex = i;
+                        break;
+                    }
+                }
+
+                if (stringIndex < 1)
+                    return codes;
+
+                int startIndex = stringIndex - 1;
+                if (codes[startIndex].opcode != OpCodes.Ldarg_0)
+                    return codes;
+
+                int endIndex = -1;
+                for (int i = stringIndex; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Call || codes[i].opcode == OpCodes.Callvirt)
+                    {
+                        MethodInfo method = codes[i].operand as MethodInfo;
+                        if (method != null && method.Name == "ClientRPC")
+                        {
+                            endIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (endIndex == -1)
+                    return codes;
+
+                for (int i = startIndex; i <= endIndex; i++)
+                {
+                    codes[i].opcode = OpCodes.Nop;
+                    codes[i].operand = null;
+                }
+
+                return codes;
             }
         }
 
